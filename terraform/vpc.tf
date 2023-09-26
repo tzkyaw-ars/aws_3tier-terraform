@@ -100,7 +100,6 @@ resource "aws_security_group" "application_tier" {
     from_port       = 80
     to_port         = 80
     protocol        = "tcp"
-    security_groups = [aws_security_group.alb_application_tier.id]
   }
 
   egress {
@@ -141,5 +140,14 @@ resource "aws_security_group" "database-sg" {
 
   tags = {
     Name = "database_sg"
+  }
+} 
+
+
+resource "aws_internet_gateway" "gw" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = "main"
   }
 }

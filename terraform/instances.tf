@@ -36,6 +36,6 @@ resource "aws_launch_template" "presentation_tier" {
   user_data = filebase64 ("data.sh")
 
   depends_on = [
-    aws_lb.presentation_tier
+    aws_lb.front_end
   ]
 }
