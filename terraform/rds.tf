@@ -4,7 +4,7 @@ resource "aws_db_instance" "database" {
   engine_version    = var.engine_version
   multi_az          = true
   db_name           = "primary" 
-#   identifier        = "database_primary"
+  identifier        = "database_primary"
   username          = var.rds_db_username
   password          = var.rds_db_password
   instance_class    = var.instance_class
