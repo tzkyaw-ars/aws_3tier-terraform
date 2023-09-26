@@ -1,14 +1,30 @@
 
-resource "aws_db_instance" "default" {
-  allocated_storage      = 20
-#   db_subnet_group_name   = aws_db_subnet_group.default.id
-  engine                 = "mysql"
-  engine_version         = "8.0.33"
-  instance_class         = "db.t3.micro"
-  multi_az               = true
-  name                   = "mydb"
-  username               = "username"
-  password               = "password"
-  skip_final_snapshot    = true
+resource "aws_db_instance" "database" {
+  allocated_storage = var.allocated_storage
+  engine_version    = var.engine_version
+  multi_az          = true
+  db_name           = var.db_name
+  username          = var.rds_db_username
+  password          = var.rds_db_password
+  instance_class    = var.instance_class
+  engine            = var.db_engine
+  skip_final_snapshot = true
   vpc_security_group_ids = [aws_security_group.database-sg.id]
+  db_subnet_group_name   = aws_db_subnet_group.rds_subnets.name
+}
+
+
+resource "aws_db_instance" "database_replica" {
+  allocated_storage = var.allocated_storage
+  engine_version    = var.engine_version
+  multi_az          = true
+  db_name           = var.db_name
+  username          = var.rds_db_username
+  password          = var.rds_db_password
+  instance_class    = var.instance_class
+  engine            = var.db_engine
+  skip_final_snapshot = true
+  vpc_security_group_ids = [aws_security_group.database-sg.id]
+  db_subnet_group_name   = aws_db_subnet_group.rds_subnets.name
+  source_db_instance_identifier = aws_db_instance.database.id
 }

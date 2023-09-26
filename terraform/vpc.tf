@@ -39,6 +39,15 @@ resource "aws_subnet" "private_subnets" {
   }
 } 
 
+resource "aws_db_subnet_group" "rds_subnets" {
+  name       = "main"
+  subnet_ids = aws_subnet.private_subnets.*.id
+
+  tags = {
+    Name = "My DB subnet group"
+  }
+}
+
 resource "aws_security_group" "presentation_tier" {
   name        = "presentation_tier_connection"
   description = "Allow HTTP requests"
