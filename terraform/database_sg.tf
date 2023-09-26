@@ -22,4 +22,4 @@ resource "aws_security_group" "database-sg" {
   tags = {
     Name = "Database SG"
   }
-}
+}              

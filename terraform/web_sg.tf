@@ -40,3 +40,4 @@ resource "aws_security_group" "demosg" {
     Name = "Web SG"
   }
 }
+

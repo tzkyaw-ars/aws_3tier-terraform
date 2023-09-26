@@ -29,3 +29,4 @@ resource "aws_instance" "demoinstance1" {
     Name = "My Public Instance 2"
   }
 }
+

@@ -44,3 +44,5 @@ resource "aws_lb_listener" "external-elb" {
     target_group_arn = aws_lb_target_group.external-alb.arn
   }
 }
+
+
