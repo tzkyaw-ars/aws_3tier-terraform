@@ -4,12 +4,12 @@ resource "aws_vpc" "main" {
   enable_dns_hostnames = true
   enable_dns_support   = true
   tags = {
-    Name = "protocolvpc"
+    Name = "labvpc"
   }
 }
 
 # Declare the data source
-data "aws_availability_zones" "available" {
+data "aws_availability_zones" "zones" {
   state = "available"
 }
 
@@ -18,7 +18,7 @@ resource "aws_subnet" "public_subnets" {
   count                   = length(var.public_cidr_blocks)
   vpc_id                  = aws_vpc.main.id
   cidr_block              = var.public_cidr_blocks[count.index]
-  availability_zone       = data.aws_availability_zones.available.names[count.index]
+  availability_zone       = data.aws_availability_zones.zones.names[count.index]
   map_public_ip_on_launch = true
 
   tags = {
@@ -31,7 +31,7 @@ resource "aws_subnet" "private_subnets" {
   count                   = length(var.private_cidr_blocks)
   vpc_id                  = aws_vpc.main.id
   cidr_block              = var.private_cidr_blocks[count.index]
-  availability_zone       = data.aws_availability_zones.available.names[count.index]
+  availability_zone       = data.aws_availability_zones.zones.names[count.index]
   map_public_ip_on_launch = false
 
   tags = {
@@ -39,17 +39,34 @@ resource "aws_subnet" "private_subnets" {
   }
 } 
 
-resource "aws_db_subnet_group" "rds_subnets" {
+resource "aws_db_subnet_group" "rds_subnet" {
   name       = "main"
   subnet_ids = aws_subnet.private_subnets.*.id
 
   tags = {
-    Name = "My DB subnet group"
+    Name = "dbsubnet"
   }
 }
 
-resource "aws_security_group" "presentation_tier" {
-  name        = "presentation_tier_connection"
+resource "aws_security_group" "bastion-sg" {
+  name = "bastion-sg"
+  description = "Allow SSH Login"
+  vpc_id = aws_vpc.main.id
+
+  ingress {
+    from_port = 22
+    to_port   = 22
+    protocol  = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+ tags = {
+   name  = "bastion-sg"
+ }
+}
+ 
+resource "aws_security_group" "front_end-sg" {
+  name        = "frontend-sg"
   description = "Allow HTTP requests"
   vpc_id      = aws_vpc.main.id
 
@@ -58,7 +75,14 @@ resource "aws_security_group" "presentation_tier" {
     from_port       = 80
     to_port         = 80
     protocol        = "tcp"
-    security_groups = [aws_security_group.alb_presentation_tier.id]
+    security_groups = [aws_security_group.alb_frontend-sg.id]
+  }
+
+  ingress {
+    from_port = 22
+    to_port = 22
+    protocol = "tcp"
+    security_groups = [aws_security_group.bastion-sg.id]
   }
 
   egress {
@@ -69,12 +93,44 @@ resource "aws_security_group" "presentation_tier" {
   }
 
   tags = {
-    Name = "presentation_tier_sg"
+    Name = "frontend_sg"
   }
 }
 
-resource "aws_security_group" "alb_presentation_tier" {
-  name        = "alb_presentation_tier_connection"
+resource "aws_security_group" "back_end-sg" {
+  name        = "backend-sg"
+  description = "Allow HTTP requests"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description     = "HTTP from anywhere"
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb_backend-sg.id]
+  }
+
+  ingress {
+    from_port = 22
+    to_port = 22
+    protocol = "tcp"
+    security_groups = [aws_security_group.bastion-sg.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "backend_sg"
+  }
+}
+
+resource "aws_security_group" "alb_frontend-sg" {
+  name = "alb_frontend-sg"
   description = "Allow HTTP requests"
   vpc_id      = aws_vpc.main.id
 
@@ -96,36 +152,38 @@ resource "aws_security_group" "alb_presentation_tier" {
   }
 
   tags = {
-    Name = "alb_presentation_tier_sg"
+    Name = "alb_frontend-sg"
   }
 }
 
-resource "aws_security_group" "application_tier" {
-  name        = "application_tier_connection"
+resource "aws_security_group" "alb_backend-sg" {
+  name = "alb_backend-sg"
   description = "Allow HTTP requests"
   vpc_id      = aws_vpc.main.id
+
   ingress {
-    description     = "HTTP from public subnet"
-    from_port       = 80
-    to_port         = 80
-    protocol        = "tcp"
+    description      = "HTTP from anywhere"
+    from_port        = 80
+    to_port          = 80
+    protocol         = "tcp"
+    security_groups = [aws_security_group.alb_frontend-sg.id]
   }
 
+
   egress {
-    from_port        = 0
-    to_port          = 0
-    protocol         = "-1"
-    cidr_blocks      = ["0.0.0.0/0"]
-    ipv6_cidr_blocks = ["::/0"]
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   tags = {
-    Name = "application_tier_sg"
+    Name = "alb_backend-sg"
   }
 }
  
 
-# Create Database Security Group
+# Database Security Group
 resource "aws_security_group" "database-sg" {
   name        = "Database connection"
   description = "Allow inbound traffic from application layer"
@@ -136,7 +194,7 @@ resource "aws_security_group" "database-sg" {
     from_port       = 3306
     to_port         = 3306
     protocol        = "tcp"
-    security_groups = [aws_security_group.application_tier.id]
+    security_groups = [aws_security_group.back_end-sg.id]
   }
 
   egress {
@@ -153,10 +211,68 @@ resource "aws_security_group" "database-sg" {
 } 
 
 
-resource "aws_internet_gateway" "gw" {
+resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.main.id
 
   tags = {
-    Name = "main"
+    Name = "main-igw"
   }
+}
+
+# Create a NAT Gateway
+resource "aws_nat_gateway" "nat_gateway" {
+  allocation_id = aws_eip.nat_eip[0].id
+  subnet_id     = aws_subnet.public_subnets[0].id
+
+  tags = {
+    Name = "main-nat-gateway"
+  }
+}
+
+#Allocate an Elastic IP for the NAT Gateway
+resource "aws_eip" "nat_eip" {
+  vpc   = true
+  count = 1
+}
+
+# Create a public route table
+resource "aws_route_table" "public_route_table" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.igw.id
+  }
+
+  tags = {
+    Name = "public-route-table"
+  }
+}
+
+# Create a private route table
+resource "aws_route_table" "private_route_table" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    gateway_id = aws_nat_gateway.nat_gateway.id
+  }
+
+  tags = {
+    Name = "private-route-table"
+  }
+}
+
+# Associate the public subnets with the public route table
+resource "aws_route_table_association" "public_subnet_route_table_associations" {
+  count          = length(aws_subnet.public_subnets[*].id)
+  subnet_id      = aws_subnet.public_subnets[count.index].id
+  route_table_id = aws_route_table.public_route_table.id
+}
+
+# Associate the private subnets with the private route table
+resource "aws_route_table_association" "private_subnet_route_table_associations" {
+  count          = length(aws_subnet.private_subnets[*].id)
+  subnet_id      = aws_subnet.private_subnets[count.index].id
+  route_table_id = aws_route_table.private_route_table.id
 }

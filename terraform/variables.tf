@@ -1,8 +1,19 @@
 variable "region" {
     type = string
-    default = "ap-southeast-1"
+    default = "ap-northeast-1"
 }
 
+variable "instance_type" {
+  description = "Aws Instance Type"
+  type = string
+  default = "t2.medium"  
+}
+
+variable "aws_ami" {
+  type = string
+  default = "ami-0b20f552f63953f0e"
+  
+}
 variable "vpc_cidr_block" {
   type    = string
   description = "CIDR block for the VPC"
@@ -22,6 +33,19 @@ variable "private_cidr_blocks" {
   default = ["10.0.3.0/24", "10.0.4.0/24"]
 }
 
+variable "key_name" {
+  type = string
+  default = "lab"
+  
+}
+
+variable "role_name" {
+  description = "Instance Login role name"
+  type = string
+  default = "Instance-Login"
+  
+}
+
 # rds variables
 variable "rds_db_username" {
   type = string
@@ -31,13 +55,13 @@ variable "rds_db_username" {
 
 variable "rds_db_password" {
   type = string
-  default = "password"
+  default = "admin123"
 }
 
 variable "multi_az" {
   type = bool
   description = "Multi-az deployment for RDS"
-  default = false
+  default = true
 }
 
 variable "db_name" {
@@ -64,7 +88,7 @@ variable "storage_type" {
   default = "gp3"
 }
 
-variable "instance_class" {
+variable "instance_class"{
   type = string
   description = "Instance type for RDS"
   default = "db.t3.micro"

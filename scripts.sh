@@ -1,7 +1,7 @@
 #!/bin/bash
-sudo yum update -y
-sudo yum upgrade -y
-sudo yum install httpd -y
+sudo apt-get update && sudo apt-get upgrade -y
+sudo apt install httpd -y
+sudo curl -fsSL https://get.docker.com | sh
 sudo systemctl start httpd
 sudo systemctl enable httpd
 
