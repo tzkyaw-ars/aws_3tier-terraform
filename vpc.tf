@@ -40,7 +40,7 @@ resource "aws_subnet" "private_subnets" {
 } 
 
 resource "aws_db_subnet_group" "rds_subnet" {
-  name       = "main"
+  name       = "db_subnet"
   subnet_ids = aws_subnet.private_subnets.*.id
 
   tags = {
@@ -185,12 +185,12 @@ resource "aws_security_group" "alb_backend-sg" {
 
 # Database Security Group
 resource "aws_security_group" "database-sg" {
-  name        = "Database connection"
-  description = "Allow inbound traffic from application layer"
+  name        = "DB connection"
+  description = "Allow inbound traffic from backend"
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    description     = "Allow traffic from application layer"
+    description     = "Allow traffic from backend"
     from_port       = 3306
     to_port         = 3306
     protocol        = "tcp"
@@ -225,7 +225,7 @@ resource "aws_nat_gateway" "nat_gateway" {
   subnet_id     = aws_subnet.public_subnets[0].id
 
   tags = {
-    Name = "main-nat-gateway"
+    Name = "nat-gateway"
   }
 }
 
@@ -233,9 +233,12 @@ resource "aws_nat_gateway" "nat_gateway" {
 resource "aws_eip" "nat_eip" {
   vpc   = true
   count = 1
+  tags = {
+    Name  = "nat_eip"
+  }
 }
 
-# Create a public route table
+# Public route table
 resource "aws_route_table" "public_route_table" {
   vpc_id = aws_vpc.main.id
 
@@ -245,11 +248,11 @@ resource "aws_route_table" "public_route_table" {
   }
 
   tags = {
-    Name = "public-route-table"
+    Name = "public-rtb"
   }
 }
 
-# Create a private route table
+# Private route table
 resource "aws_route_table" "private_route_table" {
   vpc_id = aws_vpc.main.id
 
@@ -259,19 +262,19 @@ resource "aws_route_table" "private_route_table" {
   }
 
   tags = {
-    Name = "private-route-table"
+    Name = "private-rtb"
   }
 }
 
-# Associate the public subnets with the public route table
-resource "aws_route_table_association" "public_subnet_route_table_associations" {
+# Associate the public subnets with the public rtb
+resource "aws_route_table_association" "public_subnet_rtb_associate" {
   count          = length(aws_subnet.public_subnets[*].id)
   subnet_id      = aws_subnet.public_subnets[count.index].id
   route_table_id = aws_route_table.public_route_table.id
 }
 
-# Associate the private subnets with the private route table
-resource "aws_route_table_association" "private_subnet_route_table_associations" {
+# Associate the private subnets with the private rtb
+resource "aws_route_table_association" "private_subnet_rtb_associate" {
   count          = length(aws_subnet.private_subnets[*].id)
   subnet_id      = aws_subnet.private_subnets[count.index].id
   route_table_id = aws_route_table.private_route_table.id
