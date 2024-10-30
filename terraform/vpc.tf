@@ -61,7 +61,7 @@ resource "aws_security_group" "bastion-sg" {
   }
 
  tags = {
-   name  = "bastion-sg"
+   Name  = "bastion-sg"
  }
 }
  
