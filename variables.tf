@@ -6,7 +6,14 @@ variable "region" {
 variable "instance_type" {
   description = "Aws Instance Type"
   type = string
-  default = "t2.medium"  
+  default = "t3.micro"  
+}
+
+variable "bastion_instance_type" {
+  description = "Bastion Instance type"
+  type = string
+  default = "t2.micro"
+  
 }
 
 variable "aws_ami" {
@@ -64,6 +71,13 @@ variable "multi_az" {
   default = true
 }
 
+variable "replica_multi_az" {
+  description = "Multiaz deployment for Replica"
+  type = bool
+  default = false
+  
+}
+
 variable "db_name" {
   type = string
   description = "Database name for RDS"
@@ -91,10 +105,31 @@ variable "storage_type" {
 variable "instance_class"{
   type = string
   description = "Instance type for RDS"
-  default = "db.t3.micro"
+  default = "db.t3.large"
+}
+
+variable "replica_instance_class" {
+  type = string
+  description = "Instance type for rds replica"
+  default = "db.t3.medium"
+  
 }
 
 variable "db_engine" {
   description = "Database engine for RDS"
   default = "mysql"
+}
+
+variable "environment" {
+  type = string
+  description = "DB environment"
+  default = "prod"
+  
+}
+
+variable "max_allocated_storage" {
+  type = number
+  description = "DB maximum storage"
+  default = 100
+  
 }

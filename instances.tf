@@ -1,7 +1,7 @@
 
 resource "aws_instance" "bastion" {
   ami = var.aws_ami
-  instance_type = "t2.micro"
+  instance_type = var.bastion_instance_type
   subnet_id = aws_subnet.public_subnets[0].id
   vpc_security_group_ids  = [aws_security_group.bastion-sg.id]
   key_name = var.key_name
@@ -41,6 +41,28 @@ resource "aws_iam_role_policy_attachment" "ssm_role_policy_attachment" {
 resource "aws_iam_instance_profile" "ssm_instance_profile" {
   name = "ssm-instance-profile"
   role = aws_iam_role.ssm_role.name
+}
+
+resource "aws_iam_role" "rds_monitoring_role" {
+  name_prefix = "rds-monitoring-role"
+  
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "monitoring.rds.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "rds_monitoring_policy" {
+  role       = aws_iam_role.rds_monitoring_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole"
 }
 
 resource "aws_launch_template" "front_end" {
